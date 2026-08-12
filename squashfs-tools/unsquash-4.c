@@ -248,7 +248,7 @@ static struct inode *read_inode(unsigned int start_block, unsigned int offset)
 			if(inode->fragment == SQUASHFS_INVALID_FRAG &&
 					inode->file_size % sBlk.s.block_size)
 				blocks++;
-			if(blocks > INT_MAX)
+			if(blocks > INT_MAX / sizeof(unsigned int))
 				EXIT_UNSQUASH("File system corrupted - too many blocks in inode (blocks: %lld)\n", blocks);
 
 			i.data = inode->file_size;
