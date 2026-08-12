@@ -23,6 +23,8 @@
  * unsquash-3.c
  */
 
+#include <limits.h>
+
 #include "unsquashfs.h"
 #include "squashfs_compat.h"
 #include "compressor.h"
@@ -303,6 +305,7 @@ static struct inode *read_inode(unsigned int start_block, unsigned int offset)
 		}	
 		case SQUASHFS_LREG_TYPE: {
 			squashfs_lreg_inode_header_3 *inode = &header.lreg;
+			long long blocks;
 
 			if(swap) {
 				squashfs_lreg_inode_header_3 sinode;
@@ -320,15 +323,19 @@ static struct inode *read_inode(unsigned int start_block, unsigned int offset)
 			if(inode->file_size < 0)
 				EXIT_UNSQUASH("File system corrupted - negative file size in inode\n");
 
+			blocks = inode->file_size >> sBlk.s.block_log;
+			if(inode->fragment == SQUASHFS_INVALID_FRAG &&
+					inode->file_size % sBlk.s.block_size)
+				blocks++;
+			if(blocks > INT_MAX / sizeof(unsigned int))
+				EXIT_UNSQUASH("File system corrupted - too many blocks in inode (blocks: %lld)\n", blocks);
+
 			i.data = inode->file_size;
 			i.frag_bytes = inode->fragment == SQUASHFS_INVALID_FRAG
 				?  0 : inode->file_size % sBlk.s.block_size;
 			i.fragment = inode->fragment;
 			i.offset = inode->offset;
-			i.blocks = inode->fragment == SQUASHFS_INVALID_FRAG ?
-				(inode->file_size + sBlk.s.block_size - 1) >>
-				sBlk.s.block_log :
-				inode->file_size >> sBlk.s.block_log;
+			i.blocks = blocks;
 			i.start = inode->start_block;
 			i.block_start = start;
 			i.block_offset = offset;
