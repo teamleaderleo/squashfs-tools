@@ -1,8 +1,7 @@
 diff --git a/squashfs-tools/read_fs.c b/squashfs-tools/read_fs.c
 --- a/squashfs-tools/read_fs.c
 +++ b/squashfs-tools/read_fs.c
-@@ -210,8 +210,9 @@ unsigned char *scan_inode_table(int fd, long long start, long long end,
- 		}	
+@@ -250,7 +250,7 @@ unsigned char *scan_inode_table(int fd, long long start, long long end,
  		case SQUASHFS_LREG_TYPE: {
  			struct squashfs_lreg_inode_header inode;
  			int frag_bytes, blocks, i;
@@ -11,7 +10,7 @@ diff --git a/squashfs-tools/read_fs.c b/squashfs-tools/read_fs.c
  			unsigned int *block_list;
  
  			/*
-@@ -229,10 +230,18 @@ unsigned char *scan_inode_table(int fd, long long start, long long end,
+@@ -269,9 +269,15 @@ unsigned char *scan_inode_table(int fd, long long start, long long end,
  			frag_bytes = inode.fragment == SQUASHFS_INVALID_FRAG ?
  				0 : inode.file_size % sBlk->block_size;
 -			blocks = inode.fragment == SQUASHFS_INVALID_FRAG ?
