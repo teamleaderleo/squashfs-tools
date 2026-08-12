@@ -74,6 +74,11 @@ static int read_fragment_table(long long *table_start)
 		return FALSE;
 	}
 
+	if((long long) (size_t) bytes != bytes) {
+		ERROR("read_fragment_table: fragment table too large for address space\n");
+		return FALSE;
+	}
+
 	TRACE("read_fragment_table: %u fragments, reading %d fragment indexes "
 		"from 0x%llx\n", sBlk.s.fragments, indexes,
 		sBlk.s.fragment_table_start);
