@@ -224,6 +224,11 @@ unsigned int read_xattrs_from_disk(int fd, struct squashfs_super_block *sBlk, in
 	 * read and decompress it
 	 */
 	bytes = SQUASHFS_XATTR_BYTES(ids);
+	if((long long) (size_t) bytes != bytes) {
+		ERROR("FATAL ERROR: File system corrupted - xattr id table too large for address space\n");
+		goto failed1;
+	}
+
 	xattr_ids = MALLOC(bytes);
 
 	for(i = 0; i < indexes; i++) {
