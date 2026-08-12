@@ -1,0 +1,24 @@
+diff --git a/squashfs-tools/unsquash-3.c b/squashfs-tools/unsquash-3.c
+--- a/squashfs-tools/unsquash-3.c
++++ b/squashfs-tools/unsquash-3.c
+@@ -326,7 +326,7 @@ static struct inode *read_inode(unsigned int start_block, unsigned int offset)
+ 			if(inode->fragment == SQUASHFS_INVALID_FRAG &&
+ 					inode->file_size % sBlk.s.block_size)
+ 				blocks++;
+-			if(blocks > INT_MAX)
++			if(blocks > INT_MAX / sizeof(unsigned int))
+ 				EXIT_UNSQUASH("File system corrupted - too many blocks in inode (blocks: %lld)\n", blocks);
+ 
+ 			i.data = inode->file_size;
+diff --git a/squashfs-tools/unsquash-4.c b/squashfs-tools/unsquash-4.c
+--- a/squashfs-tools/unsquash-4.c
++++ b/squashfs-tools/unsquash-4.c
+@@ -248,7 +248,7 @@ static struct inode *read_inode(unsigned int start_block, unsigned int offset)
+ 			if(inode->fragment == SQUASHFS_INVALID_FRAG &&
+ 					inode->file_size % sBlk.s.block_size)
+ 				blocks++;
+-			if(blocks > INT_MAX)
++			if(blocks > INT_MAX / sizeof(unsigned int))
+ 				EXIT_UNSQUASH("File system corrupted - too many blocks in inode (blocks: %lld)\n", blocks);
+ 
+ 			i.data = inode->file_size;
