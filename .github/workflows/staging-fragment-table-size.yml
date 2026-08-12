@@ -1,0 +1,52 @@
+name: Staging - fragment table size
+
+on:
+  push:
+    branches:
+      - staging/fragment-table-size
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check and apply prospective patch
+        run: |
+          git apply --check staging/proposals/fragment-table-size.patch
+          git apply staging/proposals/fragment-table-size.patch
+
+      - name: Install build dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zlib1g-dev
+
+      - name: Build squashfs-tools
+        working-directory: squashfs-tools
+        run: |
+          make -j2 CONFIG=1 GZIP_SUPPORT=1 XZ_SUPPORT= LZO_SUPPORT= LZ4_SUPPORT= ZSTD_SUPPORT= XATTR_SUPPORT= XATTR_OS_SUPPORT= COMP_DEFAULT=gzip
+
+      - name: Check 32-bit allocation boundaries
+        run: |
+          cat > /tmp/fragment-table-size.c <<'EOF'
+          #include <assert.h>
+          #include <stdint.h>
+
+          static int fits_32bit_size_t(uint64_t bytes)
+          {
+              return (uint64_t) (uint32_t) bytes == bytes;
+          }
+
+          int main(void)
+          {
+              assert(fits_32bit_size_t(0xfffffff8ULL));
+              assert(!fits_32bit_size_t(0x100000008ULL));
+              assert(!fits_32bit_size_t(0x100000010ULL));
+              return 0;
+          }
+          EOF
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined /tmp/fragment-table-size.c -o /tmp/fragment-table-size
+          /tmp/fragment-table-size
