@@ -19,15 +19,14 @@ jobs:
           git apply --check staging/proposals/fragment-table-size.patch
           git apply staging/proposals/fragment-table-size.patch
 
-      - name: Install build dependency
+      - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y zlib1g-dev
+          sudo apt-get install -y zlib1g-dev liblzma-dev liblzo2-dev liblz4-dev libzstd-dev
 
       - name: Build squashfs-tools
         working-directory: squashfs-tools
-        run: |
-          make -j2 CONFIG=1 GZIP_SUPPORT=1 XZ_SUPPORT= LZO_SUPPORT= LZ4_SUPPORT= ZSTD_SUPPORT= XATTR_SUPPORT= XATTR_OS_SUPPORT= COMP_DEFAULT=gzip
+        run: make -j2
 
       - name: Check 32-bit allocation boundaries
         run: |
