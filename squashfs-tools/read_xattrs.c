@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <regex.h>
+#include <limits.h>
 
 #include "squashfs_fs.h"
 #include "squashfs_swap.h"
@@ -207,6 +208,18 @@ unsigned int read_xattrs_from_disk(int fd, struct squashfs_super_block *sBlk, in
 	if(sanity_only)
 		return id_table.xattr_ids;
 
+	if(ids > INT_MAX) {
+		ERROR("FATAL ERROR: File system corrupted - xattr id count too large (xattr_ids: %u)\n",
+			ids);
+		goto failed;
+	}
+
+	bytes = SQUASHFS_XATTR_BYTES(ids);
+	if((long long) (size_t) bytes != bytes) {
+		ERROR("FATAL ERROR: File system corrupted - xattr id table too large for address space\n");
+		goto failed;
+	}
+
 	/*
 	 * Allocate and read the index to the xattr id table metadata
 	 * blocks
@@ -223,12 +236,6 @@ unsigned int read_xattrs_from_disk(int fd, struct squashfs_super_block *sBlk, in
 	 * Allocate enough space for the uncompressed xattr id table, and
 	 * read and decompress it
 	 */
-	bytes = SQUASHFS_XATTR_BYTES(ids);
-	if((long long) (size_t) bytes != bytes) {
-		ERROR("FATAL ERROR: File system corrupted - xattr id table too large for address space\n");
-		goto failed1;
-	}
-
 	xattr_ids = MALLOC(bytes);
 
 	for(i = 0; i < indexes; i++) {
