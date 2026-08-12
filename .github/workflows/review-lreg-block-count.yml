@@ -1,0 +1,84 @@
+name: Review - large regular file block list
+
+on:
+  push:
+    branches:
+      - staging/lreg-block-count
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply review correction
+        run: |
+          git apply --check staging/review/lreg-block-count-v2.patch
+          git apply staging/review/lreg-block-count-v2.patch
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zlib1g-dev liblzma-dev liblzo2-dev liblz4-dev libzstd-dev
+
+      - name: Build squashfs-tools
+        working-directory: squashfs-tools
+        run: make -j2
+
+      - name: Check downstream block-list bounds
+        run: |
+          cat > /tmp/lreg-block-list-bound.c <<'EOF'
+          #include <assert.h>
+          #include <limits.h>
+          #include <stdint.h>
+
+          static int block_count(uint64_t file_size, uint32_t block_size,
+                                 unsigned int block_log, int has_fragment,
+                                 int *out)
+          {
+              uint64_t blocks = file_size >> block_log;
+
+              if(!has_fragment && file_size % block_size)
+                  blocks++;
+              if(blocks > INT_MAX / sizeof(unsigned int))
+                  return 0;
+
+              *out = (int) blocks;
+              return 1;
+          }
+
+          int main(void)
+          {
+              const uint64_t max_blocks = INT_MAX / sizeof(unsigned int);
+              const uint64_t block_size = 4096;
+              int blocks;
+
+              assert(block_count(max_blocks * block_size, block_size, 12, 0, &blocks));
+              assert((uint64_t) blocks == max_blocks);
+              assert((uint64_t) blocks * sizeof(unsigned int) <= INT_MAX);
+
+              /* A fragment tail does not add another block-list entry. */
+              assert(block_count(max_blocks * block_size + 1, block_size, 12, 1, &blocks));
+              assert((uint64_t) blocks == max_blocks);
+              assert(blocks + 1 > 0 && blocks + 1 <= INT_MAX);
+
+              /* Without a fragment, the same tail needs one more list entry. */
+              assert(!block_count(max_blocks * block_size + 1, block_size, 12, 0, &blocks));
+              assert(!block_count((uint64_t) LLONG_MAX, block_size, 12, 0, &blocks));
+              return 0;
+          }
+          EOF
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            /tmp/lreg-block-list-bound.c -o /tmp/lreg-block-list-bound
+          /tmp/lreg-block-list-bound
+
+      - name: Promote exact tested correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add squashfs-tools/unsquash-3.c squashfs-tools/unsquash-4.c
+          git commit -m "Unsquash: bound large file block-list length"
+          git push
