@@ -1,0 +1,14 @@
+diff --git a/squashfs-tools/read_xattrs.c b/squashfs-tools/read_xattrs.c
+--- a/squashfs-tools/read_xattrs.c
++++ b/squashfs-tools/read_xattrs.c
+@@ -215,5 +215,10 @@ unsigned int read_xattrs_from_disk(int fd, struct squashfs_super_block *sBlk, int sanity_only, long long *table_start)
+ 	 */
+ 	bytes = SQUASHFS_XATTR_BYTES(ids);
++	if((long long) (size_t) bytes != bytes) {
++		ERROR("FATAL ERROR: File system corrupted - xattr id table too large for address space\n");
++		goto failed1;
++	}
++
+ 	xattr_ids = MALLOC(bytes);
+ 
+ 	for(i = 0; i < indexes; i++) {
