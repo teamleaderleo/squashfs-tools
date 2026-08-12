@@ -1,0 +1,62 @@
+name: Review - xattr id table size
+
+on:
+  push:
+    branches:
+      - staging/xattr-id-table-size
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply prospective correction
+        run: |
+          git apply --check staging/review/xattr-id-table-size.patch
+          git apply staging/review/xattr-id-table-size.patch
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zlib1g-dev liblzma-dev liblzo2-dev liblz4-dev libzstd-dev
+
+      - name: Build squashfs-tools
+        working-directory: squashfs-tools
+        run: make -j2
+
+      - name: Check 32-bit xattr table boundary
+        run: |
+          cat > /tmp/xattr-id-table-size.c <<'EOF'
+          #include <assert.h>
+          #include <stdint.h>
+
+          static int fits_32bit_size_t(uint64_t bytes)
+          {
+              return (uint64_t) (uint32_t) bytes == bytes;
+          }
+
+          int main(void)
+          {
+              const uint64_t entry_size = 16;
+
+              assert(fits_32bit_size_t(0x0fffffffULL * entry_size));
+              assert(!fits_32bit_size_t(0x10000000ULL * entry_size));
+              assert(!fits_32bit_size_t(0xffffffffULL * entry_size));
+              return 0;
+          }
+          EOF
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            /tmp/xattr-id-table-size.c -o /tmp/xattr-id-table-size
+          /tmp/xattr-id-table-size
+
+      - name: Promote exact tested source change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add squashfs-tools/read_xattrs.c
+          git commit -m "read_xattrs: reject unrepresentable xattr id tables"
+          git push
